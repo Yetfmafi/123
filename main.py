@@ -1,11 +1,9 @@
 import telebot
 import json
-import random
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from datetime import datetime
 
 # Загрузка API токена
-API_TOKEN = "7938080785:AAG6t_C4Ipfv0MtKaZzOuQEWr62MPcehL_k"
+API_TOKEN = "7973051942:AAGoXJul4_G93tsVwOAsSi2CYYTZ9IYQ1CM"
 bot = telebot.TeleBot(API_TOKEN)
 
 # Список executors
@@ -29,19 +27,6 @@ executors = [
 
 # Загрузка скриптов из файла
 SCRIPTS_FILE = "scripts.json"
-USER_INFO_FILE = "user_info.json"
-SCRIPTS_PER_PAGE = 5
-
-def load_user_info():
-    try:
-        with open(USER_INFO_FILE, "r", encoding="utf-8") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        return {}
-
-def save_user_info(user_info):
-    with open(USER_INFO_FILE, "w", encoding="utf-8") as file:
-        json.dump(user_info, file, ensure_ascii=False, indent=4)
 
 def load_scripts():
     try:
@@ -55,24 +40,12 @@ def save_scripts(scripts):
         json.dump(scripts, file, ensure_ascii=False, indent=4)
 
 scripts = load_scripts()
-users_info = load_user_info()
 
 # Главное меню
 def main_menu():
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(
-        KeyboardButton("⚙️ Executors"),
-        KeyboardButton("📜 Scripts"),
-        KeyboardButton("👤 Информация о пользователе")
-    )
+    markup.add(KeyboardButton("⚙️ Executors"), KeyboardButton("📜 Scripts"))
     return markup
-
-def generate_user_info(user_id):
-    return {
-        "id": random.randint(1000, 9999),  # Генерация случайного ID
-        "scripts_count": 0,  # Начинаем с 0 добавленных скриптов
-        "registration_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # Дата регистрации
-    }
 
 # Меню "Executors"
 def executors_menu():
@@ -90,80 +63,14 @@ def scripts_menu():
     markup.add(InlineKeyboardButton("➕ Добавить скрипт", callback_data="add_script"))
     return markup
 
-def executors_menu_page(user_id, page_num):
-    start_idx = (page_num - 1) * EXECH_PER_PAGE
-    end_idx = start_idx + EXECH_PER_PAGE
-    executors_on_page = executors[start_idx:end_idx]
-
-    markup = InlineKeyboardMarkup()
-    for idx, ex in enumerate(executors_on_page):
-        markup.add(InlineKeyboardButton(ex["name"], callback_data=f"executor_{start_idx + idx}"))
-
-    # Добавим кнопки "Следующая" и "Предыдущая" для перехода между страницами
-    if start_idx > 0:
-        markup.add(InlineKeyboardButton("⬅️ Предыдущая страница", callback_data=f"exec_prev_{page_num}"))
-    
-    if end_idx < len(executors):
-        markup.add(InlineKeyboardButton("➡️ Следующая страница", callback_data=f"exec_next_{page_num}"))
-
-    return markup
-
-def scripts_menu_page(user_id, page_num):
-    start_idx = (page_num - 1) * SCRIPTS_PER_PAGE
-    end_idx = start_idx + SCRIPTS_PER_PAGE
-    scripts_on_page = scripts[start_idx:end_idx]
-
-    markup = InlineKeyboardMarkup()
-    for idx, script in enumerate(scripts_on_page):
-        markup.add(InlineKeyboardButton(f"📜 {script['name']} - @{script['author']}", callback_data=f"script_{start_idx + idx}"))
-
-    # Кнопки перехода между страницами
-    if start_idx > 0:
-        markup.add(InlineKeyboardButton("⬅️ Предыдущая страница", callback_data=f"script_prev_{page_num}"))
-
-    if end_idx < len(scripts):
-        markup.add(InlineKeyboardButton("➡️ Следующая страница", callback_data=f"script_next_{page_num}"))
-
-    return markup
-
 # Старт
 @bot.message_handler(commands=["start"])
 def start(message):
-    # Инициализация информации о пользователе при первом запуске
-    if message.from_user.id not in users_info:
-        users_info[message.from_user.id] = generate_user_info(message.from_user.id)
-        save_user_info(users_info)  # Сохраняем информацию о пользователе
-        page_num = 1
-    else:
-        # Если пользователь уже есть, обновляем данные
-        user = users_info[message.from_user.id]
-        user['scripts_count'] = 0  # Например, сбрасываем количество скриптов
-        page_num = get_user_page(message.from_user.id, 'exec_page')  # Инициализируем текущую страницу для Executors
     bot.send_message(
         message.chat.id,
         "👋 Добро пожаловать! Выберите категорию:",
         reply_markup=main_menu()
     )
-
-
-
-@bot.message_handler(func=lambda message: message.text == "👤 Информация о пользователе")
-def show_user_info(message):
-    # Если информация о пользователе уже была создана при старте, выводим ее
-    if message.from_user.id in users_info:
-        user = users_info[message.from_user.id]
-        bot.send_message(
-            message.chat.id,
-            f"👤 Информация о пользователе:\n"
-            f"🔑 ID: {user['id']}\n"
-            f"📝 Количество добавленных скриптов: {user['scripts_count']}\n"
-            f"📅 Дата регистрации: {user['registration_date']}"
-        )
-    else:
-        bot.send_message(
-            message.chat.id,
-            "⚠️ Ошибка: информация о пользователе не найдена. Попробуйте начать сначала с команды /start."
-        )
 
 # Показ Executors
 @bot.message_handler(func=lambda message: message.text == "⚙️ Executors")
@@ -172,7 +79,7 @@ def show_executors(message):
         message.chat.id,
         "⚙️ Список Executors:",
         reply_markup=executors_menu()
-    )   
+    )
 
 # Выбор Executor
 @bot.callback_query_handler(func=lambda call: call.data.startswith("executor_"))
@@ -227,7 +134,7 @@ def add_script_step4(message, script_data):
 def add_script_finish(message, script_data):
     # Добавляем содержимое скрипта в data
     script_data["content"] = message.text
-    
+
     # Проверка уникальности содержимого
     if not is_unique_script_content(script_data["content"]):
         bot.send_message(
@@ -235,7 +142,7 @@ def add_script_finish(message, script_data):
             "❌ Этот скрипт уже существует, соблюдайте оригинальность!"
         )
         return  # Прерываем добавление скрипта, если содержимое не уникально
-    
+
     scripts.append(script_data)
     save_scripts(scripts)
     bot.send_message(message.chat.id, "✅ Скрипт успешно добавлен!")
